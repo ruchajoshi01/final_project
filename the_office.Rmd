@@ -1,0 +1,76 @@
+---
+title: "The Office"
+author: "Rucha Joshi"
+date: "12/2/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(googlesheets4)
+library(RCurl)
+```
+
+
+```{r}
+# Read in and clean data
+sheets_deauth()
+clean_data <- read_sheet("13ZZfByyxT2hznhdALJtQqbslW6VYERlJsRbumOQuTYA") %>%
+    filter(deleted == "FALSE") %>%
+    mutate(actions = str_extract_all(line_text, "\\[.*?\\]"),
+           line_text_mod = str_trim(str_replace_all(line_text, "\\[.*?\\]", ""))) %>% 
+    mutate_at(vars(line_text_mod), funs(str_replace_all(., "���","'"))) %>% 
+    mutate_at(vars(speaker), funs(tolower)) %>% 
+    mutate_at(vars(speaker), funs(str_trim(str_replace_all(., "\\[.*?\\]", "")))) %>% 
+    mutate_at(vars(speaker), funs(str_replace_all(., "micheal|michel|michae$", "michael")))
+
+clean_data_df <- as.data.frame(clean_data)
+write_rds(clean_data_df, "./the-office/clean_data.rds")
+
+# Plot number of lines spoken by each character in season 1
+plot1 <- clean_data %>%
+  select(season, episode, speaker) %>%
+  filter(season == "1", speaker == c("toby", "stanley", "ryan", "roy", 
+                                    "phyllis", "pam", "oscar", "michael", 
+                                    "dwight", "meredith", "kevin", "jim", 
+                                    "jan", "angela", "darryl")) %>% 
+  ggplot(aes(x = speaker)) +
+  geom_bar() +
+  labs(title = "Number of lines spoken by each character in season 1", 
+       x = "Character", 
+       y = "Number of lines") +
+  coord_flip()
+
+# Plot number of episodes each character is in per season
+plot2 <- clean_data %>%
+  select(season, episode, speaker) %>%
+  filter(season == "1", speaker == c("toby", "stanley", "ryan", "roy", 
+                                    "phyllis", "pam", "oscar", "michael", 
+                                    "dwight", "meredith", "kevin", "jim", 
+                                    "jan", "angela", "darryl")) %>% 
+  count(episode, speaker) %>%
+  ggplot(aes(x = speaker)) +
+  geom_bar() +
+  labs(title = "Number of episodes acted by each character in season 1", 
+       x = "Character", 
+       y = "Number of episodes") +
+  coord_flip()
+
+plot3 <- clean_data %>%
+  select(season, speaker, scene) %>%
+  filter(season == "1", speaker == c("toby", "stanley", "ryan", "roy", 
+                                    "phyllis", "pam", "oscar", "michael", 
+                                    "dwight", "meredith", "kevin", "jim", 
+                                    "jan", "angela", "darryl")) %>% 
+  count(scene, speaker) %>%
+  ggplot(aes(x = speaker)) +
+  geom_bar() +
+  labs(title = "Number of scenes acted by each character in season 1", 
+       x = "Character", 
+       y = "Number of scenes") +
+  coord_flip()
+
+```
+
