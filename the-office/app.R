@@ -58,7 +58,6 @@ ui <- fluidPage(
                                 selected = "speaker")
                     ),
 
-        
                 # Show a plot of the generated distribution
                 mainPanel(
            
@@ -69,11 +68,15 @@ ui <- fluidPage(
                 )
 
                ),
+               
+               
+               
+               
                tabPanel("Sentiment Analysis",
                         sidebarPanel(
                             
                             # Select a character
-                            sliderInput("season2",
+                            sliderInput("season_senti",
                                         "Season:",
                                         min = 1,
                                         max = 9,
@@ -101,7 +104,9 @@ ui <- fluidPage(
                         ),
                         mainPanel(
                             
-                            plotOutput("charPlot")
+                            plotOutput("piePlot"),
+                            
+                            dataTableOutput("dataTable")
                             
                         )
                         
@@ -207,6 +212,9 @@ server <- function(input, output) {
                  x = "", 
                  y = "Percentage") +
             coord_flip()
+    })
+    
+    output$dataTable <- DT::renderDataTable({
     })
 }
 
