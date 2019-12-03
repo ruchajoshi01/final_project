@@ -116,7 +116,8 @@ tidy_tokens_tf_idf <- tidy_tokens %>%
   arrange(desc(tf_idf)) %>%
   rename(prop = tf_idf) %>%
   filter(speaker == "michael") %>%
-  head(10)
+  head(10) +
+  group
 
 ggplot(tidy_tokens_tf_idf, aes(x = reorder(word, prop), y = prop)) +
   geom_col() +
