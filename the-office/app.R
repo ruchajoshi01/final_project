@@ -54,7 +54,10 @@ ui <- fluidPage(
                     # Select lines, scenes, words of each character per season
                     selectInput("char", 
                                 "Characteristic:", 
-                                choices = c("speaker", "episode", "scene"), 
+                                choices = c("Number of Lines" = "speaker", 
+                                            "Number of Episodes" = "episode", 
+                                            "Number of Scenes" = "scene",
+                                            "Word Frequency" = "freq_word"), 
                                 selected = "speaker")
                     ),
 
@@ -75,12 +78,20 @@ ui <- fluidPage(
                tabPanel("Sentiment Analysis",
                         sidebarPanel(
                             
-                            # Select a character
+                            # Select a season
                             sliderInput("season_senti",
                                         "Season:",
                                         min = 1,
                                         max = 9,
                                         value = 1),
+                            
+                            # Select an action
+                            selectInput("action", 
+                                        "Characteristic:", 
+                                        choices =  c("Most Frequent Words" = "freq_words",
+                                                     "Stanley" = "stanley",
+                                                     "Toby" = "toby"), 
+                                        selected = "angela"),
                             
                             selectInput("person", 
                                         "Character:", 
@@ -149,10 +160,26 @@ server <- function(input, output) {
                 #group_by(scene, speaker) %>% 
                 count(scene, speaker)
         }
-        else {
+        else if(input$char == "episode"){
             table_episode <- datareact1() %>%
-                count(episode, speaker) #%>% 
-                #ungroup()
+                count(episode, speaker)
+        }
+        else{
+            custom_stop_words <- bind_rows(data_frame(word = c("yeah", "hey", "uh", "um", "huh", "hmm", "ah", "umm", "uhh", "gonna", "na", "ha", "gotta"), 
+                                                      lexicon = c("custom")), 
+                                           stop_words)
+            
+            tidy_tokens <- clean_data %>%
+                select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
+                unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
+                mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
+                anti_join(stop_words, by = "word") %>%
+                filter(speaker == input$person) %>%
+                anti_join(custom_stop_words, by = "word") %>%
+                count(speaker, word) %>%
+                arrange(desc(n)) %>%
+                mutate(prop = round((n / sum(n))*100, 1)) %>%
+                head(10)
         }
     })
 
@@ -186,7 +213,7 @@ server <- function(input, output) {
                 filter(speaker == input$person) %>%
                 anti_join(custom_stop_words, by = "word") %>%
                 #filter(speaker == input$person) %>%
-                count(word) %>%
+                count(speaker, word) %>%
                 arrange(desc(n)) %>%
                 mutate(prop = round((n / sum(n))*100, 1)) %>%
                 head(10)

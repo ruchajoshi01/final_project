@@ -91,9 +91,9 @@ custom_stop_words <- bind_rows(data_frame(word = c("yeah", "hey", "uh", "um", "h
 
 tidy_tokens_no_stop <- tidy_tokens %>% 
   anti_join(custom_stop_words, by = "word") %>%
-  filter(speaker == "michael") %>%
-  #group_by(speaker) %>%
-  count(word) %>%
+  #filter(speaker == "michael") %>%
+  filter(season == 1) %>%
+  count(speaker, word) %>%
   arrange(desc(n)) %>%
   mutate(prop = round((n / sum(n))*100, 1)) %>%
   head(10)
