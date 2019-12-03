@@ -46,10 +46,14 @@ ui <- fluidPage(
             
         ),
         
-        # Sidebar with a slider input for number of bins
+        # Page with information about amount of character appearance in the show
         tabPanel("Per Character",
+                 
+                 # Allow user to select information on the side
                  sidebarLayout(
+                     
                      sidebarPanel(
+                         
                          # Select season of show
                          sliderInput(
                              "season",
@@ -77,9 +81,11 @@ ui <- fluidPage(
                      )
                      
                  ),
+        # Page with information about character sentiments
         tabPanel(
             "Sentiment Analysis",
             sidebarPanel(
+                
                 # Select a season
                 sliderInput(
                     "season_senti",
@@ -89,6 +95,7 @@ ui <- fluidPage(
                     value = 1
                 ),
                 
+                # Select a main character
                 selectInput(
                     "person",
                     "Character:",
@@ -98,7 +105,6 @@ ui <- fluidPage(
                         "Dwight" = "dwight",
                         "Jan" = "jan",
                         "Jim" = "jim",
-                        "Holly" = "holly",
                         "Kevin" = "kevin",
                         "Meredith" = "meredith",
                         "Michael" = "michael",
@@ -111,8 +117,11 @@ ui <- fluidPage(
                         "Toby" = "toby"
                     ),
                     selected = "angela"
-                )
+                ),
+                
+                h6("Analysis done using the NRC sentiment dictionary.")
             ),
+            
             mainPanel(plotOutput("piePlot"),
                       
                       dataTableOutput("dataTable"))
@@ -189,75 +198,41 @@ server <- function(input, output) {
     })
     
     datareact2 <- reactive ({
-        tidy_tokens <- clean_data %>%
-            select(line = id,
-                   line_text_mod,
-                   everything(),
-                   -line_text,
-                   -actions,
-                   -deleted) %>%
+        nrc <- get_sentiments("nrc")
+        
+        char_seas_senti <- clean_data.df %>%
+            filter(speaker == input$person) %>%
+            filter(season == input$season_senti) %>%
+            select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
             unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
             mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
-            anti_join(stop_words, by = "word")
+            inner_join(nrc)
     })
     
-    plotreactive2 <- reactive({
-        if (input$action == "freq_words")
-        {
-            custom_stop_words <-
-                bind_rows(data_frame(
-                    word = c(
-                        "yeah",
-                        "hey",
-                        "uh",
-                        "um",
-                        "huh",
-                        "hmm",
-                        "ah",
-                        "umm",
-                        "uhh",
-                        "gonna",
-                        "na",
-                        "ha",
-                        "gotta"
-                    ),
-                    lexicon = c("custom")
-                ),
-                stop_words)
-            
-            person_freq_words <- datareact2() %>%
-                filter(speaker == input$person) %>%
-                anti_join(custom_stop_words, by = "word") %>%
-                #filter(speaker == input$person) %>%
-                count(speaker, word) %>%
-                arrange(desc(n)) %>%
-                mutate(prop = round((n / sum(n)) * 100, 1)) %>%
-                head(10)
-        }
-        else {
-            person_unique_words_2 <- datareact2() %>%
-                count(speaker, word, sort = TRUE) %>%
-                ungroup() %>%
-                filter(speaker == input$person) %>%
-                bind_tf_idf(word, speaker, n) %>%
-                arrange(desc(tf_idf)) %>%
-                rename(prop = tf_idf) %>%
-                head(10)
-        }
+    plotreactive2 <- reactive ({
+        plot <- datareact2 () %>%
+            count(sentiment, sort = TRUE)
     })
     
-    output$charPlot <- renderPlot({
-        plotreactive2 () %>%
-            ggplot(aes(x = reorder(word, prop), y = prop)) +
-            geom_col() +
-            labs(title = "Frequent Words: [Enter Character Name]",
-                 x = "",
-                 y = "Percentage") +
-            coord_flip()
+    tablereactive2 <- reactive ({
+        table <- datareact2 () %>%
+            select(speaker, word, sentiment) %>%
+            group_by(sentiment)
     })
     
-    output$dataTable <- DT::renderDataTable({
+    output$piePlot <- renderPlot({
         
+        plotreactive2 () %>%
+            ggplot(aes(x = "", y = n, fill = sentiment)) + 
+            geom_bar(width = 1, stat = "identity") + 
+            labs(x = "number",
+                 y = "sentiment",
+                 title = "Sentiment Analysis: [Enter Character Name]") +
+            coord_polar("y", start=0)
+    })
+    
+    output$dataTable <- renderDataTable({
+        tablereactive2 ()
     })
 }
 
