@@ -39,7 +39,7 @@ ui <- fluidPage(
                ),
     
                # Sidebar with a slider input for number of bins 
-               tabPanel("Per Season",
+               tabPanel("Per Character",
                sidebarLayout(
        
                 sidebarPanel(
@@ -69,15 +69,15 @@ ui <- fluidPage(
                 )
 
                ),
-               tabPanel("Per Character",
+               tabPanel("Sentiment Analysis",
                         sidebarPanel(
                             
                             # Select a character
-                            selectInput("action", 
-                                        "Characteristic:", 
-                                        choices =  c("Most Frequent Words" = "freq_words",
-                                                     "Uniquely Frequent Words" = "unique_words"), 
-                                        selected = "freq_words"),
+                            sliderInput("season2",
+                                        "Season:",
+                                        min = 1,
+                                        max = 9,
+                                        value = 1),
                             
                             selectInput("person", 
                                         "Character:", 
@@ -163,37 +163,38 @@ server <- function(input, output) {
     })
     
     datareact2 <- reactive ({
-        
-        custom_stop_words <- bind_rows(data_frame(word = c("yeah", "hey", "uh", "um", "huh", "hmm", "ah", "umm", "uhh", "gonna", "na", "ha", "gotta"), 
-                                                  lexicon = c("custom")), 
-                                       stop_words)
-        
-        dr2 <- clean_data.df %>%
+        tidy_tokens <- clean_data %>%
             select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
             unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
             mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
-            anti_join(stop_words, by = "word") %>%
-            filter(speaker == input$person) %>%
-            anti_join(custom_stop_words, by = "word") %>%
-            filter(speaker == input$person) %>%
-            count(word) %>%
-            arrange(desc(n)) %>%
-            mutate(prop = round((n / sum(n))*100, 1)) %>%
-            head(10)
-            
+            anti_join(stop_words, by = "word")
     })
     
     plotreactive2 <- reactive({
         if(input$action == "freq_words") 
         {
-            person_freq_words <- datareact2()
+            custom_stop_words <- bind_rows(data_frame(word = c("yeah", "hey", "uh", "um", "huh", "hmm", "ah", "umm", "uhh", "gonna", "na", "ha", "gotta"), 
+                                                      lexicon = c("custom")), 
+                                           stop_words)
+            
+            person_freq_words <- datareact2() %>%
+                filter(speaker == input$person) %>%
+                anti_join(custom_stop_words, by = "word") %>%
+                #filter(speaker == input$person) %>%
+                count(word) %>%
+                arrange(desc(n)) %>%
+                mutate(prop = round((n / sum(n))*100, 1)) %>%
+                head(10)
         }
         else {
             person_unique_words_2 <- datareact2() %>%
                 count(speaker, word, sort = TRUE) %>%
-                ungroup() %>% 
-                filter(speaker %in% main_characters) %>% 
-                bind_tf_idf(word, speaker, n)
+                ungroup() %>%
+                filter(speaker == input$person) %>%
+                bind_tf_idf(word, speaker, n) %>%
+                arrange(desc(tf_idf)) %>%
+                rename(prop = tf_idf) %>%
+                head(10)
         }
     })
     

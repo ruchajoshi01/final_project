@@ -12,6 +12,8 @@ library(tidyverse)
 library(tidytext)
 library(googlesheets4)
 library(RCurl)
+library(SentimentAnalysis)
+library(janitor)
 ```
 
 
@@ -112,14 +114,65 @@ tidy_tokens_tf_idf <- tidy_tokens %>%
                                     "jan", "angela", "darryl")) %>% 
   bind_tf_idf(word, speaker, n) %>%
   arrange(desc(tf_idf)) %>%
+  rename(prop = tf_idf) %>%
   filter(speaker == "michael") %>%
   head(10)
 
-ggplot(tidy_tokens_tf_idf, aes(x = reorder(word, tf_idf), y = tf_idf)) +
+ggplot(tidy_tokens_tf_idf, aes(x = reorder(word, prop), y = prop)) +
   geom_col() +
   coord_flip() +
   labs(title = "word frequencies: Michael",
        y = "Percentages",
        x = "")
+
+senti_analysis <- clean_data %>%
+  filter(speaker == "michael") %>%
+  filter(season == 1) %>%
+  select(line_text) %>%
+  analyzeSentiment()
+
+SentimentAnalysis
+
+new_sentiments <- sentiments %>% #From the tidytext package
+  filter(lexicon != "loughran") %>% #Remove the finance lexicon
+  mutate( sentiment = ifelse(lexicon == "AFINN" & score >= 0, "positive",
+                              ifelse(lexicon == "AFINN" & score < 0,
+                                     "negative", sentiment))) %>%
+  group_by(lexicon) %>%
+  mutate(words_in_lexicon = n_distinct(word)) %>%
+  ungroup()
+
+nrc_joy <- get_sentiments("nrc") #%>% 
+  #filter(sentiment == "fear")
+
+michael_lines_1 <- clean_data %>%
+  filter(speaker == "michael") %>%
+  filter(season == 1) %>%
+  select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
+  unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
+  mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
+  inner_join(nrc_joy) %>%
+  group_by(sentiment) %>%
+  count(sentiment, sort = TRUE)
+  #rowid_to_column("id")
+  #summarise(word_count = n())
+
+#michael_lines_2 <- tibble(michael_lines_1$sentiment, michael_lines_1$n, id = 1:10)
+#unnest(michael_lines_1) 
+label_data = michael_lines_1
+number_of_bar = nrow(label_data) #Calculate the ANGLE of the labels
+angle = 90 - 360 * (label_data$id - 0.5) / number_of_bar #Center things
+label_data$hjust <- ifelse(angle < -90, 1, 0) #Align label
+label_data$angle <- ifelse(angle < -90, angle + 180, angle) #Flip angle
+
+
+bar_plot <- ggplot(michael_lines_1, aes(x = "", y = n, fill = sentiment)) + 
+  geom_bar(width = 1, stat = "identity") + 
+  labs(x = "number",
+       y = "sentiment")
+
+pie <- bar_plot + coord_polar("y", start=0)
+
+
 ```
 
