@@ -116,8 +116,7 @@ tidy_tokens_tf_idf <- tidy_tokens %>%
   arrange(desc(tf_idf)) %>%
   rename(prop = tf_idf) %>%
   filter(speaker == "michael") %>%
-  head(10) +
-  group
+  head(10)
 
 ggplot(tidy_tokens_tf_idf, aes(x = reorder(word, prop), y = prop)) +
   geom_col() +
@@ -126,22 +125,11 @@ ggplot(tidy_tokens_tf_idf, aes(x = reorder(word, prop), y = prop)) +
        y = "Percentages",
        x = "")
 
-senti_analysis <- clean_data %>%
-  filter(speaker == "michael") %>%
-  filter(season == 1) %>%
-  select(line_text) %>%
-  analyzeSentiment()
 
-SentimentAnalysis
 
-new_sentiments <- sentiments %>% #From the tidytext package
-  filter(lexicon != "loughran") %>% #Remove the finance lexicon
-  mutate( sentiment = ifelse(lexicon == "AFINN" & score >= 0, "positive",
-                              ifelse(lexicon == "AFINN" & score < 0,
-                                     "negative", sentiment))) %>%
-  group_by(lexicon) %>%
-  mutate(words_in_lexicon = n_distinct(word)) %>%
-  ungroup()
+
+
+
 
 nrc_joy <- get_sentiments("nrc") #%>% 
   #filter(sentiment == "fear")
@@ -174,6 +162,41 @@ bar_plot <- ggplot(michael_lines_1, aes(x = "", y = n, fill = sentiment)) +
 
 pie <- bar_plot + coord_polar("y", start=0)
 
+bing <- get_sentiments("bing")
+
+bing_analysis <- clean_data %>%
+  filter(speaker == "angela") %>%
+  filter(season == 9) %>%
+  select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
+  unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
+  mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
+  group_by(episode, speaker) %>%
+  inner_join(bing) %>%
+ # group_by(sentiment) %>%
+  count(sentiment, sort = TRUE)
+
+line_bing <- bing_analysis %>%
+  ggplot(aes(x = episode, y = n, group = sentiment, color = sentiment)) +
+  geom_line()
+
+
+afinn <- get_sentiments("afinn")
+
+afinn_analysis <- clean_data %>%
+  filter(speaker == "stanley") %>%
+  filter(season == 2) %>%
+  select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
+  unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
+  mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
+  group_by(episode, speaker) %>%
+  inner_join(afinn) %>%
+ # group_by(sentiment) %>%
+  count(value, sort = TRUE)
+
+line_afinn <- afinn_analysis %>%
+  ggplot(aes(x = episode, y = value, group = value, color = value)) +
+  geom_point()
 
 ```
+
 
