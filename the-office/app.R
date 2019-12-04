@@ -119,12 +119,13 @@ ui <- fluidPage(
                     selected = "angela"
                 ),
                 
-                h6("Analysis done using the NRC sentiment dictionary.")
+                h6("Sentiment analysis of character in the season done using the NRC sentiment dictionary."),
+                h6("Sentiment analysis of character over time done using the BING sentiment dictionary.")
             ),
             
             mainPanel(plotOutput("piePlot"),
                       
-                      dataTableOutput("dataTable"))
+                      plotOutput("timePlot"))
         )
         
     ))
@@ -149,21 +150,21 @@ server <- function(input, output) {
             select(season, episode, speaker, scene) %>%
             filter(
                 speaker %in% c(
-                    "toby",
-                    "stanley",
-                    "ryan",
-                    "roy",
-                    "phyllis",
-                    "pam",
-                    "oscar",
-                    "michael",
-                    "dwight",
-                    "meredith",
-                    "kevin",
-                    "jim",
-                    "jan",
                     "angela",
-                    "darryl"
+                    "darryl",
+                    "dwight",
+                    "jan",
+                    "jim",
+                    "kevin",
+                    "meredith",
+                    "michael",
+                    "oscar",
+                    "pam",
+                    "phyllis",
+                    "roy",
+                    "ryan",
+                    "stanley",
+                    "toby"
                 )
             )
     })
@@ -191,9 +192,13 @@ server <- function(input, output) {
         plotreactive1() %>%
             ggplot(aes(x = speaker)) +
             geom_bar() +
-            labs(title = "Number of -- spoken by each character in season 1",
+            labs(title = ifelse(input$char == "speaker",
+                                paste0("Season ", input$season, ": Number of lines per character"),
+                                paste0("Season ", input$season, ": Number of ", input$char, "s per character")),
                  x = "Character",
-                 y = "Number of --") +
+                 y = ifelse(input$char == "speaker", 
+                            "Number of Lines", 
+                            paste0("Number of ",input$char, "s"))) +
             coord_flip()
     })
     
@@ -214,10 +219,20 @@ server <- function(input, output) {
             count(sentiment, sort = TRUE)
     })
     
-    tablereactive2 <- reactive ({
-        table <- datareact2 () %>%
-            select(speaker, word, sentiment) %>%
-            group_by(sentiment)
+    timereactive2 <- reactive ({
+        
+        bing <- get_sentiments("bing")
+        
+        time_plot <- clean_data.df %>%
+            filter(speaker == "angela") %>%
+            filter(season == 9) %>%
+            select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
+            unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
+            mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
+            group_by(episode, speaker) %>%
+            inner_join(bing) %>%
+            count(sentiment, sort = TRUE)
+        
     })
     
     output$piePlot <- renderPlot({
@@ -227,12 +242,17 @@ server <- function(input, output) {
             geom_bar(width = 1, stat = "identity") + 
             labs(x = "number",
                  y = "sentiment",
-                 title = "Sentiment Analysis: [Enter Character Name]") +
+                 title = paste0("Season ", input$season_senti, ": Sentiment analysis of ", str_to_title(input$person))) +
             coord_polar("y", start=0)
     })
     
-    output$dataTable <- renderDataTable({
-        tablereactive2 ()
+    output$timePlot <- renderPlot({
+        timereactive2 () %>%
+            ggplot(aes(x = episode, y = n, group = sentiment, color = sentiment)) +
+            geom_line() + 
+            labs(x = "episode",
+                 y = "number",
+                 title = paste0("Number of positive and negative words: ", str_to_title(input$person)))
     })
 }
 
