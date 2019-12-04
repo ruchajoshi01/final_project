@@ -224,8 +224,8 @@ server <- function(input, output) {
         bing <- get_sentiments("bing")
         
         time_plot <- clean_data.df %>%
-            filter(speaker == "angela") %>%
-            filter(season == 9) %>%
+            filter(speaker == input$person) %>%
+            filter(season == input$season_senti) %>%
             select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
             unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
             mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%

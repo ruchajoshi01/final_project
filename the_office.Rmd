@@ -14,6 +14,8 @@ library(googlesheets4)
 library(RCurl)
 library(SentimentAnalysis)
 library(janitor)
+library(reshape2)
+library(wordcloud)
 ```
 
 
@@ -196,6 +198,19 @@ afinn_analysis <- clean_data %>%
 line_afinn <- afinn_analysis %>%
   ggplot(aes(x = episode, y = value, group = value, color = value)) +
   geom_point()
+
+
+# Word Clouds
+word_clouds_senti <- tidy_tokens %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+
+word_clouds <- tidy_tokens %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
 
 ```
 
