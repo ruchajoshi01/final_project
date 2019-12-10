@@ -233,8 +233,8 @@ ui <- fluidPage(
             
             h4(
                "The third tab shows correlations between the word frequencies between characters.
-               The first plot shows the overall relationships between the characters, or you can select
-               to see the word frequencies between a couple in The Office."
+               The first plot shows the overall relationships between the characters, and the second lets you
+               select to see the word frequencies between a couple in The Office."
             ),
             
             h2("About me: "),
@@ -255,6 +255,8 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    
+    # Display image of The Office characters
     output$image <- renderImage({
         # Return a list containing the filename and alt text
         list(
@@ -265,6 +267,7 @@ server <- function(input, output) {
         )
     }, deleteFile = FALSE)
     
+    # Show the correlations between word frequencies for each character
     output$compPlot <- renderImage({
         # Return a list containing the filename and alt text
         list(
@@ -275,6 +278,7 @@ server <- function(input, output) {
         )
     }, deleteFile = FALSE)
     
+    # Output the imdb plot which shows the ratings for each episode per season
     output$imdbPlot <- renderPlot({
         imdb_season <- imdb_data %>%
             filter(season == input$season) %>%
@@ -295,6 +299,7 @@ server <- function(input, output) {
         imdb_season
     })
     
+    # Output the imdb plot which shows the ratings for the entire show
     output$totalimdbPlot <- renderPlot({
         data <- tibble::rowid_to_column(imdb_data, "id") %>%
             ggplot(aes(
@@ -307,7 +312,7 @@ server <- function(input, output) {
             labs(
                 x = "Episode Number",
                 y = "IMDB Rating",
-                title = paste0("IMDB Rating per Episode")
+                title = "IMDB Rating per Episode"
             ) +
             theme(legend.position = "none")
         
@@ -341,7 +346,7 @@ server <- function(input, output) {
             )
     })
     
-    # Determine which dataframe to create
+    # Determine which dataframe to create: lines, scenes, episodes
     plotreactive1 <- reactive({
         if (input$char == "speaker")
         {
@@ -358,6 +363,7 @@ server <- function(input, output) {
         }
     })
     
+    # Output graph showing number of lines/scenes/episodes per character
     output$seasonPlot <- renderPlot({
         #DT::renderDataTable({
         
@@ -387,6 +393,7 @@ server <- function(input, output) {
             theme(legend.position = "none")
     })
     
+    # Classify each word used by characters using the NRC sentiment base
     datareact2 <- reactive ({
         nrc <- get_sentiments("nrc")
         
@@ -404,11 +411,14 @@ server <- function(input, output) {
             inner_join(nrc)
     })
     
+    # Count number of kinds of sentiments for the pie plot
     plotreactive2 <- reactive ({
         plot <- datareact2 () %>%
             count(sentiment, sort = TRUE)
     })
     
+    # BING sentiments classify words into positive or negative
+    # We use this data to make the line graph
     timereactive2 <- reactive ({
         bing <- get_sentiments("bing")
         
@@ -429,6 +439,7 @@ server <- function(input, output) {
         
     })
     
+    # Make circle graph of the kinds of sentiments used by the character that season
     output$piePlot <- renderPlot({
         plotreactive2 () %>%
             ggplot(aes(
@@ -450,6 +461,8 @@ server <- function(input, output) {
             coord_polar("y", start = 0)
     })
     
+    # Make the line graph that shows the number of positive and negative words the character used
+    # per episode in the given season
     output$timePlot <- renderPlot({
         timereactive2 () %>%
             ggplot(aes(
@@ -469,8 +482,7 @@ server <- function(input, output) {
             )
     })
     
-    #####################################
-    
+    # Make the couple's word frequency correlation graph
     datareactive3 <- reactive ({
         if (input$couple == "pj") {
             relationships <- fbc.df %>%
@@ -598,7 +610,7 @@ server <- function(input, output) {
         
     })
     
-    
+    # Plot the relationships correlation graph for couples
     output$rPlot <- renderPlotly ({
         datareactive3 ()
     })
