@@ -21,6 +21,7 @@ library(psych)
 library(ggcorrplot)
 library(scales)
 library(plotly)
+library(janitor)
 ```
 
 # Cleaned Data
@@ -36,9 +37,18 @@ clean_data <- read_sheet("13ZZfByyxT2hznhdALJtQqbslW6VYERlJsRbumOQuTYA") %>%
     mutate_at(vars(speaker), funs(str_trim(str_replace_all(., "\\[.*?\\]", "")))) %>% 
     mutate_at(vars(speaker), funs(str_replace_all(., "micheal|michel|michae$", "michael")))
 
-# Create rds file for Shiny app
+# Create clean data rds file for Shiny app
 clean_data_df <- as.data.frame(clean_data)
 write_rds(clean_data_df, "./the-office/clean_data.rds")
+
+# Read in and clean data on IMDB ratings
+sheets_deauth()
+imdb_data <- read_sheet("1TkOAXgSaN7PNxzNVtJGMQvClSYVZyy_ff1NqY54uiCw") %>%
+  clean_names()
+
+# Create IMDB ratings data rds file for Shiny app
+imdb_data <- as.data.frame(imdb_data)
+write_rds(imdb_data, "./the-office/imdb_data.rds")
 
 ```
 
@@ -59,8 +69,8 @@ tidy_tokens_no_stop2 <- tidy_tokens %>%
 
 frequency_by_character <- tidy_tokens_no_stop2 %>%
   filter(speaker %in% c("toby", "stanley", "ryan", "roy", 
-                        "phyllis", "pam", "oscar", "michael", 
-                        "dwight", "meredith", "kevin", "jim", 
+                        "phyllis", "pam", "oscar", "michael", "holly", 
+                        "dwight", "meredith", "kelly", "kevin", "jim", 
                         "jan", "angela", "darryl")) %>% 
   count(speaker, word, sort = TRUE) %>% 
   group_by(speaker) %>% 
@@ -300,12 +310,12 @@ write_rds(frequency_by_character, "./the-office/frequency_by_character.rds")
 
 # cor_all <- corr.test(frequency_by_character[, -1], adjust = "none")
 # cor_plot <- ggcorrplot(cor_all[["r"]], 
-#                        hc.order = TRUE, 
-#                        type = "lower",
-#                        method = "circle",
-#                        lab = TRUE,
-#                        lab_size = 2.5) + 
-#   labs(title = "Correlation between Word Frequencies")
+#                         hc.order = TRUE, 
+#                         type = "lower",
+#                         method = "circle",
+#                         lab = TRUE,
+#                         lab_size = 2.5) + 
+#    labs(title = "Correlation between Word Frequencies")
 # 
 # cor_plot
 # 

@@ -16,27 +16,35 @@ library(RCurl)
 library(SentimentAnalysis)
 library(janitor)
 library(reshape2)
-library(wordcloud)
+library(psych)
+library(ggcorrplot)
+library(scales)
+library(plotly)
+library(shinythemes)
 
-# Input cleaned data
+# Inputs: Cleaned data and word correlations data
 clean_data.df <- read_rds("clean_data.rds")
+fbc.df <- read_rds("frequency_by_character.rds")
+imdb_data <- read_rds("imdb_data.rds")
 
 # Define UI for application
 ui <- fluidPage(
+    theme = shinytheme("flatly"),
     
     # Navigation bar
     navbarPage(
-        
         # Navigation bar title
         "The Office",
         
-        # Page with information about amount of character appearance in the show
-        tabPanel("Per Character",
+        # Page with information about amount of character appearance in the show per season
+        tabPanel("Per Season",
                  
                  # Allow user to select information on the side
                  sidebarLayout(
-                     
                      sidebarPanel(
+                         h4(
+                             "Select a season and characteristic to see how prevalent a character was!"
+                         ),
                          
                          # Select season of show
                          sliderInput(
@@ -54,21 +62,54 @@ ui <- fluidPage(
                              choices = c(
                                  "Number of Lines" = "speaker",
                                  "Number of Episodes" = "episode",
-                                 "Number of Scenes" = "scene"),
-                                 selected = "speaker"
-                             )
+                                 "Number of Scenes" = "scene"
+                             ),
+                             selected = "speaker"
+                         )
+                         
+                     ),
+                     
+                     # Show a plot of the generated distribution
+                     mainPanel(
+                         plotOutput("seasonPlot"),
+                         
+                         plotOutput("imdbPlot"),
+                         
+                         h4("Some things I found interesting are: "),
+                         
+                         h5(
+                             "1. It's very clear that Michael Scott is the main character.
+                                  He consistently has the most number of lines compared to any other character
+                                  during the seasons he is in the show. "
                          ),
                          
-                         # Show a plot of the generated distribution
-                         mainPanel(plotOutput("seasonPlot"))
+                         h5(
+                             "2. Although some characters don't have many lines,
+                                  they are in a lot of scenes which makes sense given that the show is filmed like
+                                  a mockumentary, and the characters' reactions say more than words. "
+                         ),
+                         
+                         h5(
+                             "3. I would have expected the season finales to have the highest IMDB rating since
+                             usually those have the most suspence to keep audience viewership, but only in four
+                             out of the nine seasons was the last episode the most highly rated. "
+                         ),
+                         
+                         plotOutput("totalimdbPlot")
                          
                      )
                      
-                 ),
+                 )),
+        
+        
         # Page with information about character sentiments
+        # This page shows the types of words the character used per season over time
         tabPanel(
             "Sentiment Analysis",
             sidebarPanel(
+                h4(
+                    "Select a season and character to see the emotions behind the character's words!"
+                ),
                 
                 # Select a season
                 sliderInput(
@@ -103,79 +144,68 @@ ui <- fluidPage(
                     selected = "angela"
                 ),
                 
-                h6("Sentiment analysis of character in the season done using the NRC sentiment dictionary."),
-                h6("Sentiment analysis of character over time done using the BING sentiment dictionary.")
+                h6(
+                    "Sentiment analysis of character in the season done using the NRC sentiment dictionary."
+                ),
+                h6(
+                    "Sentiment analysis of character over time done using the BING sentiment dictionary."
+                )
             ),
             
-            mainPanel(plotOutput("piePlot"),
-                      
-                      plotOutput("timePlot"))
+            mainPanel(
+                plotOutput("piePlot"),
+                
+                plotOutput("timePlot"),
+                
+                h4("Some things I found interesting are: "),
+                
+                h5(
+                    "1. Almost all of the characters are more positive than they are negative,
+                         including Dwight and Angela. I was suprised by this because they are such cynical
+                         characters that I wasn't expecting them to be more positive. A notable exception
+                         to this is Stanley in season 9 or Angela in season 4."
+                ),
+                
+                h5("2. About 20% of the things most characters say is positive. "),
+                
+                h5(
+                    "3. You can see character development with characters such as Toby and Jan.
+                         Their sentiments become increasingly complex and change over time. "
+                )
+            )
         ),
         
+        # Page with information about word correlations between characters
         tabPanel(
             "Relationships",
             
             sidebarPanel(
+                h4("Select a couple to see how correlated their words are!"),
                 
                 selectInput(
-                    "person1",
-                    "Character:",
+                    "couple",
+                    "Couple:",
                     choices =  c(
-                        "Angela" = "angela",
-                        "Darryl" = "darryl",
-                        "Dwight" = "dwight",
-                        "Jan" = "jan",
-                        "Jim" = "jim",
-                        "Kevin" = "kevin",
-                        "Meredith" = "meredith",
-                        "Michael" = "michael",
-                        "Oscar" = "oscar",
-                        "Pam" = "pam",
-                        "Phyllis" = "phyllis",
-                        "Roy" = "roy",
-                        "Ryan" = "ryan",
-                        "Stanley" = "stanley",
-                        "Toby" = "toby"
+                        "Angela and Dwight" = "ad",
+                        "Holly and Michael" = "hm",
+                        "Jan and Michael" = "jm",
+                        "Kelly and Ryan" = "kr",
+                        "Pam and Jim" = "pj"
                     ),
-                    selected = "angela"
-                ),
-                
-                selectInput(
-                    "person2",
-                    "Character:",
-                    choices =  c(
-                        "Angela" = "angela",
-                        "Darryl" = "darryl",
-                        "Dwight" = "dwight",
-                        "Jan" = "jan",
-                        "Jim" = "jim",
-                        "Kevin" = "kevin",
-                        "Meredith" = "meredith",
-                        "Michael" = "michael",
-                        "Oscar" = "oscar",
-                        "Pam" = "pam",
-                        "Phyllis" = "phyllis",
-                        "Roy" = "roy",
-                        "Ryan" = "ryan",
-                        "Stanley" = "stanley",
-                        "Toby" = "toby"
-                    ),
-                    selected = "angela"
+                    selected = "pj"
                 )
-                
             ),
             
             mainPanel(
                 imageOutput("compPlot", width = "100%", height = "100%"),
                 
-                plotlyOutput("relationshipPlot")
-                )
+                plotlyOutput("rPlot")
+            )
             
         ),
         
         # About page
         tabPanel(
-            
             "About",
             
             # Header
@@ -185,26 +215,33 @@ ui <- fluidPage(
             # Image of The Office characters
             imageOutput("image", width = "100%", height = "100%"),
             
-            h2(
-                "About this project: "
+            h2("About this project: "),
+            
+            h4("In this app, you will be able to explore The Office."),
+            
+            h4(
+                "The first tab allows you to play around with the number of episodes, scenes, and
+                lines for each character per season. You can also see the IMDB rating for each episode per season,
+                as well as the total graph of the ratings over the course of the whole show."
             ),
             
             h4(
-                "In this app, you will be able to explore The Office.
-                
-                The first tab allows you to play around with the number of episodes, scenes, and lines for each character per season.
-                
-                The second tab shows a sentiment analysis for each character depicting how positive or negative their characters were, 
+            
+                "The second tab shows a sentiment analysis for each character depicting how positive or negative their characters were,
                 as well as how their sentiments changed over the course of a season."
             ),
             
-            h2(
-                "About me: "
+            h4(
+               "The third tab shows correlations between the word frequencies between characters.
+               The first plot shows the overall relationships between the characters, or you can select
+               to see the word frequencies between a couple in The Office."
             ),
             
+            h2("About me: "),
+            
             h4(
-                "My name is Rucha Joshi, and I am a sophomore at Harvard College. I am concentrating in Statistics and 
-               planning on doing a secondary in Government. I am from Austin, TX and love the traveling, eating desserts, and snow!" 
+                "My name is Rucha Joshi, and I am a sophomore at Harvard College. I am concentrating in Statistics and
+               planning on doing a secondary in Government. I am from Austin, TX and love the traveling, eating desserts, and snow!"
             ),
             
             h6(
@@ -213,7 +250,8 @@ ui <- fluidPage(
             
         )
         
-    ))
+    )
+)
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
@@ -236,6 +274,45 @@ server <- function(input, output) {
             style = "display: block; margin-left: auto; margin-right: auto;"
         )
     }, deleteFile = FALSE)
+    
+    output$imdbPlot <- renderPlot({
+        imdb_season <- imdb_data %>%
+            filter(season == input$season) %>%
+            ggplot(aes(
+                x = episode,
+                y = imdb_rating,
+                color = season,
+                group = season
+            )) +
+            geom_line() +
+            labs(
+                x = "Episode Number",
+                y = "IMDB Rating",
+                title = paste0("Season ", input$season, ": IMDB Rating per Episode")
+            ) +
+            theme(legend.position = "none")
+        
+        imdb_season
+    })
+    
+    output$totalimdbPlot <- renderPlot({
+        data <- tibble::rowid_to_column(imdb_data, "id") %>%
+            ggplot(aes(
+                x = id,
+                y = imdb_rating,
+                color = factor(season),
+                group = season
+            )) +
+            geom_line() +
+            labs(
+                x = "Episode Number",
+                y = "IMDB Rating",
+                title = paste0("IMDB Rating per Episode")
+            ) +
+            theme(legend.position = "none")
+        
+        data
+    })
     
     # Data for first graph of information (episodes, scenes, lines) per character
     datareact1 <- reactive ({
@@ -285,16 +362,29 @@ server <- function(input, output) {
         #DT::renderDataTable({
         
         plotreactive1() %>%
-            ggplot(aes(x = speaker)) +
+            ggplot(aes(x = speaker, color = speaker)) +
             geom_bar() +
-            labs(title = ifelse(input$char == "speaker",
-                                paste0("Season ", input$season, ": Number of lines per character"),
-                                paste0("Season ", input$season, ": Number of ", input$char, "s per character")),
-                 x = "Character",
-                 y = ifelse(input$char == "speaker", 
-                            "Number of Lines", 
-                            paste0("Number of ",input$char, "s"))) +
-            coord_flip()
+            labs(
+                title = ifelse(
+                    input$char == "speaker",
+                    paste0("Season ", input$season, ": Number of lines per character"),
+                    paste0(
+                        "Season ",
+                        input$season,
+                        ": Number of ",
+                        input$char,
+                        "s per character"
+                    )
+                ),
+                x = "Character",
+                y = ifelse(
+                    input$char == "speaker",
+                    "Number of Lines",
+                    paste0("Number of ", input$char, "s")
+                )
+            ) +
+            coord_flip() +
+            theme(legend.position = "none")
     })
     
     datareact2 <- reactive ({
@@ -303,7 +393,12 @@ server <- function(input, output) {
         char_seas_senti <- clean_data.df %>%
             filter(speaker == input$person) %>%
             filter(season == input$season_senti) %>%
-            select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
+            select(line = id,
+                   line_text_mod,
+                   everything(),
+                   -line_text,
+                   -actions,
+                   -deleted) %>%
             unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
             mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
             inner_join(nrc)
@@ -315,13 +410,17 @@ server <- function(input, output) {
     })
     
     timereactive2 <- reactive ({
-        
         bing <- get_sentiments("bing")
         
         time_plot <- clean_data.df %>%
             filter(speaker == input$person) %>%
             filter(season == input$season_senti) %>%
-            select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
+            select(line = id,
+                   line_text_mod,
+                   everything(),
+                   -line_text,
+                   -actions,
+                   -deleted) %>%
             unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
             mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
             group_by(episode, speaker) %>%
@@ -331,64 +430,180 @@ server <- function(input, output) {
     })
     
     output$piePlot <- renderPlot({
-        
         plotreactive2 () %>%
-            ggplot(aes(x = "", y = n, fill = sentiment)) + 
-            geom_bar(width = 1, stat = "identity") + 
-            labs(x = "number",
-                 y = "sentiment",
-                 title = paste0("Season ", input$season_senti, ": Sentiment analysis of ", str_to_title(input$person))) +
-            coord_polar("y", start=0)
+            ggplot(aes(
+                x = "",
+                y = n,
+                fill = sentiment
+            )) +
+            geom_bar(width = 1, stat = "identity") +
+            labs(
+                x = "number",
+                y = "sentiment",
+                title = paste0(
+                    "Season ",
+                    input$season_senti,
+                    ": Sentiment analysis of ",
+                    str_to_title(input$person)
+                )
+            ) +
+            coord_polar("y", start = 0)
     })
     
     output$timePlot <- renderPlot({
         timereactive2 () %>%
-            ggplot(aes(x = episode, y = n, group = sentiment, color = sentiment)) +
-            geom_line() + 
-            labs(x = "episode",
-                 y = "number",
-                 title = paste0("Number of positive and negative words: ", str_to_title(input$person)))
+            ggplot(aes(
+                x = episode,
+                y = n,
+                group = sentiment,
+                color = sentiment
+            )) +
+            geom_line() +
+            labs(
+                x = "episode",
+                y = "number",
+                title = paste0(
+                    "Number of positive and negative words: ",
+                    str_to_title(input$person)
+                )
+            )
     })
     
-    # datareactive3 <- reactive () ({
-    #     
-    #     custom_stop_words <- bind_rows(data_frame(word = c("yeah", "hey", "uh", "um", "huh", "hmm", "ah", "umm", "uhh", "gonna", "na", "ha", "gotta"), 
-    #                                               lexicon = c("custom")), 
-    #                                    stop_words)
-    #     
-    #     tidy_tokens <- clean_data %>%
-    #         select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>% 
-    #         unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
-    #         mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
-    #         anti_join(custom_stop_words, by = "word") %>%
-    #         filter(speaker %in% c("toby", "stanley", "ryan", "roy", 
-    #                               "phyllis", "pam", "oscar", "michael", 
-    #                               "dwight", "meredith", "kevin", "jim", 
-    #                               "jan", "angela", "darryl")) %>% 
-    #         count(speaker, word, sort = TRUE) %>% 
-    #         group_by(speaker) %>% 
-    #         mutate(proportion = n / sum(n)) %>% 
-    #         select(-n) %>% 
-    #         spread(speaker, proportion) %>%
-    #         select(word, input$person1, input$person2) %>%
-    #         ggplot(aes(x = input$person1, y = input$person2, color = abs(input$person1 - input$person2), label = word)) +
-    #         geom_abline(color = "gray40", lty = 2) +
-    #         geom_jitter(alpha = 0.1, size = 2.5, width = 0.3, height = 0.3) +
-    #         scale_x_log10(labels = percent_format()) +
-    #         scale_y_log10(labels = percent_format()) +
-    #         labs(x = "input$person1",
-    #              y = "input$person2",
-    #              title = "Word Frequncy Comparison: input$person1 and input$person2") +
-    #         theme(legend.position = "none")
-    #     
-    #     ggplotly(tidy_tokens, tooltip = c("word"))
-    #     
-    # })
-    # 
-    # output$relationshipPlot <- renderPlotly({
-    #     datareactive3 ()
-    #         
-    # })
+    #####################################
+    
+    datareactive3 <- reactive ({
+        if (input$couple == "pj") {
+            relationships <- fbc.df %>%
+                select(word, pam, jim) %>%
+                ggplot(aes(
+                    x = pam,
+                    y = jim,
+                    color = abs(pam - jim),
+                    label = word
+                )) +
+                geom_abline(color = "gray40", lty = 2) +
+                geom_jitter(
+                    alpha = 0.1,
+                    size = 2.5,
+                    width = 0.3,
+                    height = 0.3
+                ) +
+                scale_x_log10(labels = percent_format()) +
+                scale_y_log10(labels = percent_format()) +
+                labs(x = "Pam",
+                     y = "Jim",
+                     title = "Word Frequency Comparison: Pam and Jim") +
+                theme(legend.position = "none")
+        }
+        
+        else if (input$couple == "ad") {
+            relationships <- fbc.df %>%
+                select(word, angela, dwight) %>%
+                ggplot(aes(
+                    x = angela,
+                    y = dwight,
+                    color = abs(angela - dwight),
+                    label = word
+                )) +
+                geom_abline(color = "gray40", lty = 2) +
+                geom_jitter(
+                    alpha = 0.1,
+                    size = 2.5,
+                    width = 0.3,
+                    height = 0.3
+                ) +
+                scale_x_log10(labels = percent_format()) +
+                scale_y_log10(labels = percent_format()) +
+                labs(x = "Angela",
+                     y = "Dwight",
+                     title = "Word Frequency Comparison: Angela and Dwight") +
+                theme(legend.position = "none")
+            
+        }
+        
+        else if (input$couple == "hm") {
+            relationships <- fbc.df %>%
+                select(word, holly, michael) %>%
+                ggplot(aes(
+                    x = holly,
+                    y = michael,
+                    color = abs(holly - michael),
+                    label = word
+                )) +
+                geom_abline(color = "gray40", lty = 2) +
+                geom_jitter(
+                    alpha = 0.1,
+                    size = 2.5,
+                    width = 0.3,
+                    height = 0.3
+                ) +
+                scale_x_log10(labels = percent_format()) +
+                scale_y_log10(labels = percent_format()) +
+                labs(x = "Holly",
+                     y = "Michael",
+                     title = "Word Frequency Comparison: Holly and Michael") +
+                theme(legend.position = "none")
+            
+        }
+        
+        else if (input$couple == "jm") {
+            relationships <- fbc.df %>%
+                select(word, jan, michael) %>%
+                ggplot(aes(
+                    x = jan,
+                    y = michael,
+                    color = abs(jan - michael),
+                    label = word
+                )) +
+                geom_abline(color = "gray40", lty = 2) +
+                geom_jitter(
+                    alpha = 0.1,
+                    size = 2.5,
+                    width = 0.3,
+                    height = 0.3
+                ) +
+                scale_x_log10(labels = percent_format()) +
+                scale_y_log10(labels = percent_format()) +
+                labs(x = "Jan",
+                     y = "Michael",
+                     title = "Word Frequency Comparison: Jan and Michael") +
+                theme(legend.position = "none")
+        }
+        
+        else {
+            relationships <- fbc.df %>%
+                select(word, kelly, ryan) %>%
+                ggplot(aes(
+                    x = kelly,
+                    y = ryan,
+                    color = abs(kelly - ryan),
+                    label = word
+                )) +
+                geom_abline(color = "gray40", lty = 2) +
+                geom_jitter(
+                    alpha = 0.1,
+                    size = 2.5,
+                    width = 0.3,
+                    height = 0.3
+                ) +
+                scale_x_log10(labels = percent_format()) +
+                scale_y_log10(labels = percent_format()) +
+                labs(x = "Kelly",
+                     y = "Ryan",
+                     title = "Word Frequency Comparison: Kelly and Ryan") +
+                theme(legend.position = "none")
+        }
+        
+        relationships
+        
+    })
+    
+    
+    output$rPlot <- renderPlotly ({
+        datareactive3 ()
+    })
+    
+    ########################################
     
 }
 
