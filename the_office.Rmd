@@ -52,6 +52,11 @@ imdb_data <- read_sheet("1TkOAXgSaN7PNxzNVtJGMQvClSYVZyy_ff1NqY54uiCw") %>%
 imdb_data <- as.data.frame(imdb_data)
 write_rds(imdb_data, "./the-office/imdb_data.rds")
 
+# Input NRC lexicon database into Shiny
+nrc <- get_sentiments("nrc")
+nrc <- as.data.frame(nrc)
+write_rds(nrc, "./the-office/nrc.rds")
+
 ```
 
 # Relationships/ Correlations

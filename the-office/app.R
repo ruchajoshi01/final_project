@@ -11,7 +11,6 @@ library(shiny)
 library(readr)
 library(tidyverse)
 library(tidytext)
-library(googlesheets4)
 library(RCurl)
 library(SentimentAnalysis)
 library(janitor)
@@ -28,6 +27,7 @@ library(vembedr)
 clean_data.df <- read_rds("clean_data.rds")
 fbc.df <- read_rds("frequency_by_character.rds")
 imdb_data <- read_rds("imdb_data.rds")
+nrc <- read_rds("nrc.rds")
 
 # Define UI for application
 ui <- fluidPage(
@@ -405,10 +405,8 @@ server <- function(input, output) {
     
     # Classify each word used by characters using the NRC sentiment base
     datareact2 <- reactive ({
-        nrc <- get_sentiments("nrc")
         
         char_seas_senti <- clean_data.df %>%
-        #clean_data.df %>%
             filter(speaker == input$person) %>%
             filter(season == input$season_senti) %>%
             select(line = id,
@@ -419,7 +417,7 @@ server <- function(input, output) {
                    -deleted) %>%
             unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
             mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
-            group_by(episode, speaker) %>%
+            # group_by(episode, speaker) %>%
             inner_join(nrc) %>%
             count(sentiment, sort = TRUE)
         
@@ -464,7 +462,8 @@ server <- function(input, output) {
             ggplot(aes(
                 x = "",
                 y = n,
-                fill = sentiment
+                fill = sentiment,
+                color = sentiment
             )) +
             geom_bar(width = 1, stat = "identity") +
             labs(

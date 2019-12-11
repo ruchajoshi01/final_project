@@ -5,8 +5,8 @@ account: rucha-joshi
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1558424
-bundleId: 2656956
+bundleId: 2659308
 url: https://rucha-joshi.shinyapps.io/the-office/
-when: 1576011805.63634
+when: 1576079734.79884
 asMultiple: FALSE
 asStatic: FALSE
