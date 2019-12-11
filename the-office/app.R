@@ -280,7 +280,7 @@ server <- function(input, output) {
         cor_plot <- ggcorrplot(cor_all[["r"]], 
                                hc.order = TRUE, 
                                type = "lower",
-                               method = "circle",
+                               method = "square",
                                lab = TRUE,
                                lab_size = 2.5) +
             labs(title = "Correlation between Word Frequencies")
@@ -408,6 +408,7 @@ server <- function(input, output) {
         nrc <- get_sentiments("nrc")
         
         char_seas_senti <- clean_data.df %>%
+        #clean_data.df %>%
             filter(speaker == input$person) %>%
             filter(season == input$season_senti) %>%
             select(line = id,
@@ -418,13 +419,19 @@ server <- function(input, output) {
                    -deleted) %>%
             unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
             mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
-            inner_join(nrc)
+            group_by(episode, speaker) %>%
+            inner_join(nrc) %>%
+            count(sentiment, sort = TRUE)
+        
+        char_seas_senti
     })
     
     # Count number of kinds of sentiments for the pie plot
     plotreactive2 <- reactive ({
         plot <- datareact2 () %>%
             count(sentiment, sort = TRUE)
+        
+        plot
     })
     
     # BING sentiments classify words into positive or negative
@@ -451,7 +458,9 @@ server <- function(input, output) {
     
     # Make circle graph of the kinds of sentiments used by the character that season
     output$piePlot <- renderPlot({
-        plotreactive2 () %>%
+        # plotreactive2 () %>%
+        datareact2 () %>%
+        # timereactive2 () %>%
             ggplot(aes(
                 x = "",
                 y = n,
