@@ -21,6 +21,8 @@ library(ggcorrplot)
 library(scales)
 library(plotly)
 library(shinythemes)
+library(htmltools)
+library(vembedr)
 
 # Inputs: Cleaned data and word correlations data
 clean_data.df <- read_rds("clean_data.rds")
@@ -197,7 +199,7 @@ ui <- fluidPage(
             ),
             
             mainPanel(
-                imageOutput("compPlot", width = "100%", height = "100%"),
+                plotOutput("compPlot"),
                 
                 plotlyOutput("rPlot")
             )
@@ -237,6 +239,10 @@ ui <- fluidPage(
                select to see the word frequencies between a couple in The Office."
             ),
             
+            h3("For more information about this project, please click the link below!"),
+            
+            embed_url("https://youtu.be/L8ZCZSqmllU"),
+            
             h2("About me: "),
             
             h4(
@@ -268,15 +274,19 @@ server <- function(input, output) {
     }, deleteFile = FALSE)
     
     # Show the correlations between word frequencies for each character
-    output$compPlot <- renderImage({
+    output$compPlot <- renderPlot({
         # Return a list containing the filename and alt text
-        list(
-            src = 'word_freq_corr.png',
-            height = 450,
-            width = 550,
-            style = "display: block; margin-left: auto; margin-right: auto;"
-        )
-    }, deleteFile = FALSE)
+        cor_all <- corr.test(fbc.df[, -1], adjust = "none")
+        cor_plot <- ggcorrplot(cor_all[["r"]], 
+                               hc.order = TRUE, 
+                               type = "lower",
+                               method = "circle",
+                               lab = TRUE,
+                               lab_size = 2.5) +
+            labs(title = "Correlation between Word Frequencies")
+        
+        cor_plot
+    })
     
     # Output the imdb plot which shows the ratings for each episode per season
     output$imdbPlot <- renderPlot({
@@ -312,7 +322,7 @@ server <- function(input, output) {
             labs(
                 x = "Episode Number",
                 y = "IMDB Rating",
-                title = "IMDB Rating per Episode"
+                title = "Complete IMDB Ratings"
             ) +
             theme(legend.position = "none")
         
@@ -450,7 +460,7 @@ server <- function(input, output) {
             geom_bar(width = 1, stat = "identity") +
             labs(
                 x = "number",
-                y = "sentiment",
+                y = "",
                 title = paste0(
                     "Season ",
                     input$season_senti,

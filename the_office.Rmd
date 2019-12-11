@@ -2,7 +2,9 @@
 title: "The Office"
 author: "Rucha Joshi"
 date: "12/2/2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -55,6 +57,13 @@ write_rds(imdb_data, "./the-office/imdb_data.rds")
 # Relationships/ Correlations
 ```{r}
 # Words we don't want to include because they are too generic
+
+tidy_tokens <- clean_data %>%
+  select(line = id, line_text_mod, everything(), -line_text, -actions, -deleted) %>%
+  unnest_tokens(word, line_text_mod, strip_numeric = TRUE) %>%
+  mutate_at(vars(word), funs(str_replace_all(., "'s$", ""))) %>%
+  anti_join(stop_words, by = "word")
+
 generic_words <- bind_rows(data_frame(word = c("yeah", "hey", "uh", "um", 
                                                "huh", "hmm", "ah", "umm", 
                                                "uhh", "gonna", "na", "ha", 
@@ -308,16 +317,16 @@ write_rds(frequency_by_character, "./the-office/frequency_by_character.rds")
 
 # Experimenting with word correlations
 
-# cor_all <- corr.test(frequency_by_character[, -1], adjust = "none")
-# cor_plot <- ggcorrplot(cor_all[["r"]], 
-#                         hc.order = TRUE, 
-#                         type = "lower",
-#                         method = "circle",
-#                         lab = TRUE,
-#                         lab_size = 2.5) + 
-#    labs(title = "Correlation between Word Frequencies")
-# 
-# cor_plot
+cor_all <- corr.test(frequency_by_character[, -1], adjust = "none")
+cor_plot <- ggcorrplot(cor_all[["r"]], 
+                       hc.order = TRUE, 
+                        type = "lower",
+                        method = "circle",
+                        lab = TRUE,
+                        lab_size = 2.5) +
+   labs(title = "Correlation between Word Frequencies")
+
+cor_plot
 # 
 # pam_jim_words <- frequency_by_character %>% 
 #   select(word, pam, jim) %>% 
